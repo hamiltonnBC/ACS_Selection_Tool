@@ -1,0 +1,199 @@
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+.container {
+    width: 95%;
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2 {
+    color: #2c3e50;
+    text-align: center;
+}
+
+label {
+    display: block;
+    margin-top: 10px;
+    color: #555;
+}
+
+select, input, button {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+#variable_selection {
+    display: none;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.col-md-3 {
+    flex: 0 0 25%;
+    max-width: 25%;
+}
+
+.col-md-9 {
+    flex: 0 0 75%;
+    max-width: 75%;
+}
+
+#left-panel {
+    padding: 20px;
+    background-color: #ecf0f1;
+    min-height: 500px;
+}
+
+#right-panel {
+    padding: 20px;
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+#data-table-container {
+    overflow-x: auto;
+}
+
+.dataTables_wrapper {
+    margin-top: 20px;
+}
+
+table.dataTable {
+    width: 100% !important;
+}
+
+table.dataTable thead th, table.dataTable thead td {
+    padding: 10px 18px;
+    border-bottom: 1px solid #111;
+}
+
+table.dataTable tbody th, table.dataTable tbody td {
+    padding: 8px 10px;
+}
+
+.dataTables_filter {
+    margin-bottom: 10px;
+}
+
+.dataTables_filter input {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}
+
+.dataTables_paginate .paginate_button {
+    padding: 5px 10px;
+    margin: 2px;
+    border-radius: 4px;
+    background-color: #3498db;
+    color: #fff !important;
+    cursor: pointer;
+}
+
+.dataTables_paginate .paginate_button.current {
+    background-color: #2980b9;
+}
+
+@media (max-width: 768px) {
+    .col-md-3, .col-md-9 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+
+
+header, footer {
+    background-color: #2c3e50;
+    color: white;
+    padding: 1rem 0;
+}
+
+footer {
+    margin-top: 2rem;
+    text-align: center;
+}
+
+.info-box, .action-box {
+    background-color: #ecf0f1;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #2980b9;
+}
+
+.fa, .fas {
+    margin-right: 5px;
+}
+
+
+.hidden-csv-button {
+    display: none;
+}
+
+/* Add these to your existing CSS */
+
+.year-selector {
+    margin-bottom: 20px;
+}
+
+#moreVariables, #moreYears {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+#moreYears {
+    height: 100px;  /* Adjust as needed */
+}
+
+h4 {
+    margin-top: 15px;
+    margin-bottom: 5px;
+}

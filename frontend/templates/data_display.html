@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Census Data Results</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.7.0/css/buttons.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><i class="fas fa-table"></i> Census Data Results</h1>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="row">
+            <div class="col-md-3" id="left-panel">
+                <div class="info-box">
+                    <h3><i class="fas fa-info-circle"></i> Data Info</h3>
+                    <p>Table: {{ table_name }}</p>
+                    <p>Geography: {{ geography }}</p>
+                </div>
+                <div class="action-box">
+                    <h3><i class="fas fa-cogs"></i> Actions</h3>
+                    <button id="exportCsv" class="btn"><i class="fas fa-file-csv"></i> Export CSV</button>
+                    
+                    <h4>Add More Variables</h4>
+                    <input type="text" id="moreVariables" placeholder="Enter variable codes">
+                    
+                    <h4>Add More Years</h4>
+                    <select id="moreYears" multiple>
+                        {% for year in available_years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <button id="updateData" class="btn"><i class="fas fa-sync"></i> Update Data</button>
+                    
+                    <button id="newQuery" class="btn"><i class="fas fa-search"></i> New Query</button>
+                </div>
+            </div>
+            <div class="col-md-9" id="right-panel">
+                <div class="year-selector">
+                    <label for="yearSelect">Select Year:</label>
+                    <select id="yearSelect">
+                        {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div id="data-table-container">
+                    {{ table_html|safe }}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Census Data App. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        $(document).ready(function() {
+            var dataTable = $('.data-table').DataTable({
+                pageLength: 25,
+                scrollX: true,
+                fixedHeader: true,
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'csv',
+                        text: 'Hidden CSV Button',
+                        className: 'hidden-csv-button',
+                        filename: function() {
+                            return 'census_data_' + $('#yearSelect').val() + '_' + new Date().toISOString().slice(0,10);
+                        }
+                    }
+                ]
+            });
+
+            $('#exportCsv').on('click', function() {
+                $('.hidden-csv-button').click();
+            });
+
+            $('#newQuery').on('click', function() {
+                window.location.href = '/';
+            });
+
+            $('#updateData').on('click', function() {
+                var moreVariables = $('#moreVariables').val();
+                var moreYears = $('#moreYears').val();
+                
+                $.ajax({
+                    url: '/update_data',
+                    method: 'POST',
+                    data: {
+                        moreVariables: moreVariables,
+                        moreYears: moreYears
+                    },
+                    success: function(response) {
+                        location.reload();
+                    },
+                    error: function(error) {
+                        console.error('Error updating data:', error);
+                    }
+                });
+            });
+
+            $('#yearSelect').on('change', function() {
+                // Here you would typically update the table data based on the selected year
+                // For now, we'll just reload the page with the new year
+                window.location.href = '/results?year=' + $(this).val();
+            });
+        });
+    </script>
+</body>
+</html>

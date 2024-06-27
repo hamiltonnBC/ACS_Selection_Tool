@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Census Data Selection App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Census Data Selection App</h1>
+        <form id="data_selection_form">
+            <label for="table_select">Select a table:</label>
+            <select id="table_select" name="table_select" required>
+                <option value="">--Select a table--</option>
+                <option value="DP02">DP02</option>
+                <option value="DP03">DP03</option>
+                <option value="DP04">DP04</option>
+                <option value="DP05">DP05</option>
+            </select>
+
+            <label for="year_select">Select a year:</label>
+            <select id="year_select" name="year_select" required>
+                <option value="">--Select a year--</option>
+                <!-- Year options will be added dynamically -->
+            </select>
+
+            <label for="acs_type">Select ACS type:</label>
+            <select id="acs_type" name="acs_type" required>
+                <option value="acs1">ACS 1-Year</option>
+                <option value="acs5">ACS 5-Year</option>
+            </select>
+
+            <label for="include_metadata">Include metadata as variables?</label>
+            <select id="include_metadata" name="include_metadata" required>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+            </select>
+
+            <label for="data_option">Select data option:</label>
+            <select id="data_option" name="data_option" required>
+                <option value="entire_table">Entire Table</option>
+                <option value="select_variables">Select Variables</option>
+            </select>
+
+            <div id="variable_selection" style="display: none;">
+                <label for="selected_variables">Enter selected variables (comma-separated):</label>
+                <input type="text" id="selected_variables" name="selected_variables" 
+                       placeholder="e.g., variable1, variable2, variable3">
+            </div>
+
+            <label for="geography">Enter Geography:</label>
+            <input type="text" id="geography" name="geography" required placeholder="e.g., state:*">
+
+            <label for="api_key">API Key (optional):</label>
+            <input type="text" id="api_key" name="api_key" placeholder="Enter your API key in quotes">
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <div id="confirmation" style="display: none;">
+            <h2>Is this correct?</h2>
+            <p id="api_url_display"></p>
+            <button id="confirm_yes">Yes</button>
+            <button id="confirm_no">No</button>
+        </div>
+    </div>
+    
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
