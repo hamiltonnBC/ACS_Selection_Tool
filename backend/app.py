@@ -12,6 +12,7 @@ Main features:
 - Web interface for data visualization
 """
 
+from datetime import timedelta
 import requests
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import pandas as pd
@@ -25,15 +26,13 @@ from functools import wraps
 
 #from db_helper import DatabaseManager
 
-# Initialize database manager
-db = DatabaseManager('postgresql://acs_user:Nick_ACS_DB_Password@localhost:5432/acs_db')
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Get configuration from environment variables
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://acs_user:Nick_ACS_DB_Password@localhost:5432/acs_db')
-SECRET_KEY = os.getenv('SECRET_KEY', 'your-development-secret-key')
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # Create a database instance
 #db = None
@@ -43,6 +42,14 @@ app = Flask(__name__,
             static_folder="../frontend/static", 
             template_folder="../frontend/templates")
 
+# Configure app
+if not SECRET_KEY:
+    raise ValueError("No SECRET_KEY set in environment variables")
+app.secret_key = SECRET_KEY
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
+
+# Initialize database manager
+db = DatabaseManager('postgresql://acs_user:Nick_ACS_DB_Password@localhost:5432/acs_db')
 
 # def create_app():
 #     """Initialize and configure the Flask application."""
@@ -116,65 +123,73 @@ def get_variable_names(year, api_key, variables_needed, acs_selection, tableType
     return variables
 
 def fetch_and_save_data(year, table, acs_type, include_metadata, selected_variables, geography, api_key):
-    """
-    Fetch data from Census API and save to CSV file.
-    
-    Args:
-        year (str): Year of data
-        table (str): Table identifier
-        acs_type (str): Type of ACS survey
-        include_metadata (bool): Whether to include metadata
-        selected_variables (str): Comma-separated variable codes
-        geography (str): Geographic level
-        api_key (str): Census API key
-    
-    Returns:
-        dict: Response message or error
-    """
-    output_directory = 'census_data'
-    os.makedirs(output_directory, exist_ok=True)
+    """Fetch data from Census API and save to CSV file."""
+    try:
+        output_directory = 'census_data'
+        os.makedirs(output_directory, exist_ok=True)
 
-    acs_selection = get_acs_selection(year, acs_type)
-    tableType = '/profile' if table.startswith('DP') else ''
+        acs_selection = get_acs_selection(year, acs_type)
+        tableType = '/profile' if table.startswith('DP') else ''
 
-    # Process variables
-    if selected_variables:
-        variables_needed = selected_variables.split(',')
-    else:
-        variables_needed = []
+        # Process variables
+        if selected_variables:
+            variables_needed = selected_variables.split(',')
+        else:
+            variables_needed = []
 
-    variable_names = get_variable_names(year, api_key, variables_needed, acs_selection, tableType)
-    variables_to_get = ','.join(variables_needed)
+        variable_names = get_variable_names(year, api_key, variables_needed, acs_selection, tableType)
+        variables_to_get = ','.join(variables_needed)
 
-    # Construct API URL
-    api_url = f'https://api.census.gov/data/{year}/acs/{acs_selection}{tableType}?get=NAME,GEOID,{variables_to_get}&for={geography}'
-    if api_key:
-        api_url += f'&key={api_key}'
+        # Construct API URL
+        if table.startswith('DP'):
+            if not selected_variables:
+                api_url = f'https://api.census.gov/data/{year}/acs/{acs_selection}/profile?get=group({table})&for={geography}'
+            else:
+                api_url = f'https://api.census.gov/data/{year}/acs/{acs_selection}/profile?get=NAME,{variables_to_get}&for={geography}'
+        else:
+            if not selected_variables:
+                api_url = f'https://api.census.gov/data/{year}/acs/{acs_selection}?get=group({table})&for={geography}'
+            else:
+                api_url = f'https://api.census.gov/data/{year}/acs/{acs_selection}?get=NAME,{variables_to_get}&for={geography}'
 
-    # Fetch and process data
-    response = requests.get(api_url)
-    if response.status_code == 200:
+        if api_key:
+            api_url += f'&key={api_key}'
+
+        print(f"Requesting URL: {api_url}")  # Debug print
+
+        # Fetch and process data
+        response = requests.get(api_url)
+        if response.status_code != 200:
+            error_message = f"API request failed with status code {response.status_code}. Response: {response.text}"
+            print(error_message)  # Debug print
+            return {"error": error_message}
+
         try:
             data = response.json()
-            if data and len(data) > 1:
-                # Format data with headers and save to CSV
-                header_row = data[0]
-                title_row = ['NAME'] + [variable_names.get(var, var) for var in header_row[1:]] + ['Year']
-                data[0].append('Year')
-                for row in data[1:]:
-                    row.append(year)
-                data.insert(1, title_row)
-
-                csv_filename = f'{output_directory}/{table}_{year}_{acs_selection}.csv'
-                with open(csv_filename, 'w', newline='') as csv_file:
-                    writer = csv.writer(csv_file)
-                    writer.writerows(data)
-
-                return {"message": f"Data saved to {csv_filename}"}
-            return {"error": "No data received from the API"}
         except Exception as e:
-            return {"error": f"Error processing data: {str(e)}"}
-    return {"error": f"API request failed with status code {response.status_code}"}
+            return {"error": f"Failed to parse API response: {str(e)}"}
+
+        if not data or len(data) <= 1:
+            return {"error": "No data received from the API"}
+
+        # Format data with headers and save to CSV
+        header_row = data[0]
+        title_row = ['NAME'] + [variable_names.get(var, var) for var in header_row[1:]] + ['Year']
+        data[0].append('Year')
+        for row in data[1:]:
+            row.append(year)
+        data.insert(1, title_row)
+
+        csv_filename = f'{output_directory}/{table}_{year}_{acs_selection}.csv'
+        with open(csv_filename, 'w', newline='') as csv_file:
+            writer = csv.writer(csv_file)
+            writer.writerows(data)
+
+        return {"message": f"Data saved to {csv_filename}"}
+
+    except Exception as e:
+        print(f"Error in fetch_and_save_data: {str(e)}")  # Debug print
+        return {"error": f"Error processing data: {str(e)}"}
 
 # Flask route handlers
 
@@ -232,54 +247,113 @@ def index():
     """Render the main application page."""
     return render_template('index.html')
 
+ 
 @app.route('/api/submit', methods=['POST'])
 @login_required  
 def submit_data():
-    """
-    Handle data submission requests.
-    
-    Expects JSON payload with:
-    - table_select
-    - year_select
-    - acs_type
-    - include_metadata
-    - data_option
-    - selected_variables
-    - geography
-    - api_key
-    """
-    data = request.json
+    """Handle data submission requests."""
+    try:
+        data = request.json
+        print("Received data:", data)  # Debug print
 
         # Save the search to database
-    search_id = db.save_search(
-        user_id=session['user_id'],
-        project_id=data.get('project_id'),
-        table_name=data['table_select'],
-        year=data['year_select'],
-        acs_type=data['acs_type'],
-        geography=data['geography'],
-        variables=data['selected_variables'].split(',') if data['selected_variables'] else []
-    )
-    result = fetch_and_save_data(
-        data['year_select'],
-        data['table_select'],
-        data['acs_type'],
-        data['include_metadata'],
-        data['selected_variables'] if data['data_option'] == 'select_variables' else None,
-        data['geography'],
-        data['api_key'].strip('"') if data['api_key'] else None
-    )
-    result['search_id'] = search_id
+        search_id = db.save_search(
+            user_id=session['user_id'],
+            project_id=data.get('project_id'),
+            table_name=data['table_select'],
+            year=data['year_select'],
+            acs_type=data['acs_type'],
+            geography=data['geography'],
+            variables=data['selected_variables'].split(',') if data.get('selected_variables') else []
+        )
+        
+        # Process the data
+        result = fetch_and_save_data(
+            year=data['year_select'],
+            table=data['table_select'],
+            acs_type=data['acs_type'],
+            include_metadata=data.get('include_metadata', False),
+            selected_variables=data.get('selected_variables'),
+            geography=data['geography'],
+            api_key=data['api_key'].strip('"') if data.get('api_key') else None
+        )
+        
+        if 'error' in result:
+            return jsonify(result), 400
+            
+        result['search_id'] = search_id
+        return jsonify(result)
 
-    return jsonify(result)
+    except Exception as e:
+        print(f"Error in submit_data: {str(e)}")  # Debug print
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/process_data', methods=['POST'])
+@app.route('/process_data', methods=['GET', 'POST'])
+@login_required
 def process_data():
-    """
-    Process Census data and render visualization.
-    
-    Handles data retrieval, processing, and rendering the data display template.
-    """
+    """Process Census data and render visualization."""
+    try:
+        if request.method == 'GET':
+            # Handle GET request with search_id
+            search_id = request.args.get('search_id')
+            if not search_id:
+                return redirect(url_for('index'))
+            
+            # Get search data from database
+            search = db.get_search(search_id)
+            if not search:
+                return redirect(url_for('index'))
+            
+            # Reconstruct API URL
+            if search['table_name'].startswith('DP'):
+                api_url = f'https://api.census.gov/data/{search["year"]}/acs/{search["acs_type"]}/profile?get=NAME,{",".join(search["variables"])}&for={search["geography"]}'
+            else:
+                api_url = f'https://api.census.gov/data/{search["year"]}/acs/{search["acs_type"]}?get=NAME,{",".join(search["variables"])}&for={search["geography"]}'
+
+            # Fetch data using reconstructed URL
+            response = requests.get(api_url)
+            response.raise_for_status()
+            census_data = response.json()
+
+            # Get variable names and process data
+            tableType = '/profile' if search['table_name'].startswith('DP') else ''
+            variable_names = get_variable_names(
+                search['year'], 
+                None,  # API key not needed for viewing
+                search['variables'], 
+                search['acs_type'], 
+                tableType
+            )
+
+            # Create and format DataFrame
+            df = pd.DataFrame(census_data[1:], columns=census_data[0])
+            for var_code, var_name in variable_names.items():
+                if var_code in df.columns:
+                    df = df.rename(columns={var_code: f"{var_code}: {var_name}"})
+
+            # Generate HTML table
+            table_html = df.to_html(index=False, classes='display data-table')
+            
+            available_years = range(2009, 2023)
+            years = [search['year']]
+
+            return render_template('data_display.html', 
+                                table_html=table_html, 
+                                table_name=search['table_name'], 
+                                year=search['year'], 
+                                geography=search['geography'],
+                                available_years=available_years,
+                                years=years,
+                                current_year=search['year'],
+                                search=search)
+        else:
+            # Your existing POST request handling
+            data = request.json
+            # ... rest of your existing POST handling code ...
+
+    except Exception as e:
+        app.logger.error(f"An error occurred: {str(e)}")
+        return jsonify({"error": str(e)}), 500
     try:
         data = request.json
         # Extract request parameters
@@ -423,6 +497,34 @@ def delete_search(search_id):
     if db.delete_search(search_id):
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'Failed to delete search'}), 400
+
+@app.route('/api/debug_url', methods=['POST'])
+def debug_url():
+    """Debug endpoint to test API URL generation."""
+    data = request.json
+    try:
+        # Test the API URL
+        api_url = generate_census_api_url(
+            year=data['year_select'],
+            table=data['table_select'],
+            acs_type=data['acs_type'],
+            selected_variables=data.get('selected_variables'),
+            geography=data['geography'],
+            api_key=data.get('api_key')
+        )
+        
+        # Try to fetch data
+        response = requests.get(api_url)
+        
+        return jsonify({
+            'api_url': api_url,
+            'status_code': response.status_code,
+            'response_text': response.text if response.status_code != 200 else 'Success',
+            'headers': dict(response.headers)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 
 def main():
     """
