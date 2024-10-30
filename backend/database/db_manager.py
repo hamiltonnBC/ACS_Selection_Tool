@@ -206,3 +206,31 @@ class DatabaseManager:
                     conn.rollback()
                     return False
 
+
+    def get_user_projects(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get all projects for a user."""
+        with self.get_connection() as conn:
+            with conn.cursor(cursor_factory=DictCursor) as cur:
+                cur.execute("""
+                    SELECT project_id, project_name, description, created_at, updated_at,
+                        (SELECT COUNT(*) FROM searches WHERE searches.project_id = projects.project_id) as search_count
+                    FROM projects
+                    WHERE user_id = %s
+                    ORDER BY updated_at DESC
+                """, (user_id,))
+                return [dict(row) for row in cur.fetchall()]
+
+    def delete_project(self, project_id: int) -> bool:
+        """Delete a project and all associated searches."""
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                try:
+                    cur.execute("""
+                        DELETE FROM projects
+                        WHERE project_id = %s
+                        RETURNING project_id
+                    """, (project_id,))
+                    return cur.fetchone() is not None
+                except psycopg2.Error:
+                    conn.rollback()
+                    return False
