@@ -175,33 +175,34 @@ class DatabaseManager:
                 result = cur.fetchone()
                 return dict(result) if result else None
 
-def update_search_saved_status(self, search_id: int, is_saved: bool) -> bool:
-    """Update the saved status of a search."""
-    with self.get_connection() as conn:
-        with conn.cursor() as cur:
-            try:
-                cur.execute("""
-                    UPDATE searches
-                    SET is_saved = %s
-                    WHERE search_id = %s
-                    RETURNING search_id
-                """, (is_saved, search_id))
-                return cur.fetchone() is not None
-            except psycopg2.Error:
-                conn.rollback()
-                return False
+    def update_search_saved_status(self, search_id: int, is_saved: bool) -> bool:
+        """Update the saved status of a search."""
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                try:
+                    cur.execute("""
+                        UPDATE searches
+                        SET is_saved = %s
+                        WHERE search_id = %s
+                        RETURNING search_id
+                    """, (is_saved, search_id))
+                    return cur.fetchone() is not None
+                except psycopg2.Error:
+                    conn.rollback()
+                    return False
 
-def delete_search(self, search_id: int) -> bool:
-    """Delete a search."""
-    with self.get_connection() as conn:
-        with conn.cursor() as cur:
-            try:
-                cur.execute("""
-                    DELETE FROM searches
-                    WHERE search_id = %s
-                    RETURNING search_id
-                """, (search_id,))
-                return cur.fetchone() is not None
-            except psycopg2.Error:
-                conn.rollback()
-                return False
+    def delete_search(self, search_id: int) -> bool:
+        """Delete a search."""
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                try:
+                    cur.execute("""
+                        DELETE FROM searches
+                        WHERE search_id = %s
+                        RETURNING search_id
+                    """, (search_id,))
+                    return cur.fetchone() is not None
+                except psycopg2.Error:
+                    conn.rollback()
+                    return False
+

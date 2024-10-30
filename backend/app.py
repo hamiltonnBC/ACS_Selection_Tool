@@ -347,61 +347,62 @@ def process_data():
                                 current_year=search['year'],
                                 search=search)
         else:
-            # Your existing POST request handling
+            # Handle POST request
             data = request.json
-            # ... rest of your existing POST handling code ...
+            
+            # Extract request parameters
+            api_url = data['api_url']
+            year = data['year_select']
+            acs_type = data['acs_type']
+            table = data['table_select']
+            data_option = data['data_option']
+            geography = data['geography']
+            api_key = data.get('api_key')
+
+            # Fetch and process Census data
+            response = requests.get(api_url)
+            response.raise_for_status()
+            census_data = response.json()
+
+            # Get variable names and process data
+            tableType = '/profile' if table.startswith('DP') else ''
+            variables_needed = ([col for col in census_data[0] if col != 'NAME' and not col.startswith('GEO_ID')] 
+                              if data_option == 'entire_table' 
+                              else data['selected_variables'].split(',') if data['selected_variables'] else [])
+
+            variable_names = get_variable_names(year, api_key, variables_needed, acs_type, tableType)
+
+            # Create and format DataFrame
+            df = pd.DataFrame(census_data[1:], columns=census_data[0])
+            for var_code, var_name in variable_names.items():
+                if var_code in df.columns:
+                    df = df.rename(columns={var_code: f"{var_code}: {var_name}"})
+
+            # Generate HTML table
+            table_html = df.to_html(index=False, classes='display data-table')
+            
+            available_years = range(2009, 2023)
+            years = [year]
+
+            return render_template('data_display.html', 
+                                table_html=table_html, 
+                                table_name=table, 
+                                year=year, 
+                                geography=geography,
+                                available_years=available_years,
+                                years=years,
+                                current_year=year)
 
     except Exception as e:
         app.logger.error(f"An error occurred: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-    try:
-        data = request.json
-        # Extract request parameters
-        api_url = data['api_url']
-        year = data['year_select']
-        acs_type = data['acs_type']
-        table = data['table_select']
-        data_option = data['data_option']
-        geography = data['geography']
-        api_key = data.get('api_key')
-
-        # Fetch and process Census data
-        response = requests.get(api_url)
-        response.raise_for_status()
-        census_data = response.json()
-
-        # Get variable names and process data
-        tableType = '/profile' if table.startswith('DP') else ''
-        variables_needed = ([col for col in census_data[0] if col != 'NAME' and not col.startswith('GEO_ID')] 
-                          if data_option == 'entire_table' 
-                          else data['selected_variables'].split(',') if data['selected_variables'] else [])
-
-        variable_names = get_variable_names(year, api_key, variables_needed, acs_type, tableType)
-
-        # Create and format DataFrame
-        df = pd.DataFrame(census_data[1:], columns=census_data[0])
-        for var_code, var_name in variable_names.items():
-            if var_code in df.columns:
-                df = df.rename(columns={var_code: f"{var_code}: {var_name}"})
-
-        # Generate HTML table
-        table_html = df.to_html(index=False).replace('class="dataframe"', 'class="data-table"')
-        
-        available_years = range(2009, 2023)
-        years = [year]
-
         return render_template('data_display.html', 
-                            table_html=table_html, 
-                            table_name=table, 
-                            year=year, 
-                            geography=geography,
-                            available_years=available_years,
-                            years=years,
-                            current_year=year)
-
-    except Exception as e:
-        app.logger.error(f"An error occurred: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+                             error=f"Error processing data: {str(e)}",
+                             table_name="Error",
+                             year="",
+                             geography="",
+                             available_years=[],
+                             years=[],
+                             current_year="")
 
 @app.route('/update_data', methods=['POST'])
 def update_data():
