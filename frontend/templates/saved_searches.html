@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Searches - ACS Data Application</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="text-xl font-bold text-blue-600">ACS Data App</a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Home</a>
+                        <a href="/projects" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Projects</a>
+                        <a href="/saved_searches" class="text-blue-600 px-3 py-2 rounded-md">Saved Searches</a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-gray-500 mr-4">Welcome, {{ session.username }}</span>
+                    <a href="/logout" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">Saved Searches</h2>
+                <div class="flex space-x-4">
+                    <select id="projectFilter" class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">All Projects</option>
+                        {% for project in projects %}
+                            <option value="{{ project.project_id }}">{{ project.project_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Date
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Project
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Table
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Year
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Geography
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for search in searches %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ search.search_timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ search.project_name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ search.table_name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ search.year }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ search.geography }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div class="flex space-x-2">
+                                        <button onclick="rerunSearch('{{ search.search_id }}')"
+                                                class="text-blue-600 hover:text-blue-900">
+                                            Rerun
+                                        </button>
+                                        {% if not search.is_saved %}
+                                        <button onclick="saveSearch('{{ search.search_id }}')"
+                                                class="text-green-600 hover:text-green-900">
+                                            Save
+                                        </button>
+                                        {% endif %}
+                                        <button onclick="deleteSearch('{{ search.search_id }}')"
+                                                class="text-red-600 hover:text-red-900">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filter searches by project
+        document.getElementById('projectFilter').addEventListener('change', function(e) {
+            const projectId = e.target.value;
+            window.location.href = `/saved_searches${projectId ? '?project=' + projectId : ''}`;
+        });
+
+        // Function to rerun a search
+        async function rerunSearch(searchId) {
+            try {
+                const response = await fetch(`/api/rerun_search/${searchId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.href = `/process_data?search_id=${searchId}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Function to save a search
+        async function saveSearch(searchId) {
+            try {
+                const response = await fetch(`/api/save_search/${searchId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Function to delete a search
+        async function deleteSearch(searchId) {
+            if (confirm('Are you sure you want to delete this search?')) {
+                try {
+                    const response = await fetch(`/api/delete_search/${searchId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

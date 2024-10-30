@@ -3,70 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Census Data Selection App</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <title>ACS Data Explorer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <h1>Census Data Selection App</h1>
-        <form id="data_selection_form">
-            <label for="table_select">Select a table:</label>
-            <select id="table_select" name="table_select" required>
-                <option value="">--Select a table--</option>
-                <option value="DP02">DP02</option>
-                <option value="DP03">DP03</option>
-                <option value="DP04">DP04</option>
-                <option value="DP05">DP05</option>
-            </select>
-
-            <label for="year_select">Select a year:</label>
-            <select id="year_select" name="year_select" required>
-                <option value="">--Select a year--</option>
-                <!-- Year options will be added dynamically -->
-            </select>
-
-            <label for="acs_type">Select ACS type:</label>
-            <select id="acs_type" name="acs_type" required>
-                <option value="acs1">ACS 1-Year</option>
-                <option value="acs5">ACS 5-Year</option>
-            </select>
-
-            <label for="include_metadata">Include metadata as variables?</label>
-            <select id="include_metadata" name="include_metadata" required>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-            </select>
-
-            <label for="data_option">Select data option:</label>
-            <select id="data_option" name="data_option" required>
-                <option value="entire_table">Entire Table</option>
-                <option value="select_variables">Select Variables</option>
-            </select>
-
-            <div id="variable_selection" style="display: none;">
-                <label for="selected_variables">Enter selected variables (comma-separated):</label>
-                <input type="text" id="selected_variables" name="selected_variables" 
-                       placeholder="e.g., variable1, variable2, variable3">
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="text-xl font-bold text-blue-600">ACS Data Explorer</a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/" class="text-blue-600 px-3 py-2 rounded-md">Home</a>
+                        <a href="/projects" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Projects</a>
+                        <a href="/saved_searches" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Saved Searches</a>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    {% if session.get('user_id') %}
+                        <span class="text-gray-500 mr-4">Welcome, {{ session.username }}</span>
+                        <a href="/logout" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Logout</a>
+                    {% else %}
+                        <a href="/login" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Login</a>
+                        <a href="/register" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Register</a>
+                    {% endif %}
+                </div>
             </div>
+        </div>
+    </nav>
 
-            <label for="geography">Enter Geography:</label>
-            <input type="text" id="geography" name="geography" required placeholder="e.g., state:*">
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white shadow rounded-lg p-6">
+                <h1 class="text-2xl font-bold text-gray-900 mb-6">Select Census Data</h1>
+                
+                <form id="data_selection_form" class="space-y-6">
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <!-- Table Selection -->
+                        <div>
+                            <label for="table_select" class="block text-sm font-medium text-gray-700">Select a table</label>
+                            <select id="table_select" name="table_select" required
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                <option value="">--Select a table--</option>
+                                <option value="DP02">DP02 - Social Characteristics</option>
+                                <option value="DP03">DP03 - Economic Characteristics</option>
+                                <option value="DP04">DP04 - Housing Characteristics</option>
+                                <option value="DP05">DP05 - Demographic Characteristics</option>
+                            </select>
+                        </div>
 
-            <label for="api_key">API Key (optional):</label>
-            <input type="text" id="api_key" name="api_key" placeholder="Enter your API key in quotes">
+                        <!-- Year Selection -->
+                        <div>
+                            <label for="year_select" class="block text-sm font-medium text-gray-700">Select a year</label>
+                            <select id="year_select" name="year_select" required
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                <option value="">--Select a year--</option>
+                            </select>
+                        </div>
 
-            <button type="submit">Submit</button>
-        </form>
+                        <!-- ACS Type -->
+                        <div>
+                            <label for="acs_type" class="block text-sm font-medium text-gray-700">Select ACS type</label>
+                            <select id="acs_type" name="acs_type" required
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                <option value="acs1">ACS 1-Year</option>
+                                <option value="acs5">ACS 5-Year</option>
+                            </select>
+                        </div>
 
-        <div id="confirmation" style="display: none;">
-            <h2>Is this correct?</h2>
-            <p id="api_url_display"></p>
-            <button id="confirm_yes">Yes</button>
-            <button id="confirm_no">No</button>
+                        <!-- Data Option -->
+                        <div>
+                            <label for="data_option" class="block text-sm font-medium text-gray-700">Select data option</label>
+                            <select id="data_option" name="data_option" required
+                                    class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md">
+                                <option value="entire_table">Entire Table</option>
+                                <option value="select_variables">Select Variables</option>
+                            </select>
+                        </div>
+
+                        <!-- Geography -->
+                        <div>
+                            <label for="geography" class="block text-sm font-medium text-gray-700">Enter Geography</label>
+                            <input type="text" id="geography" name="geography" required placeholder="e.g., state:*"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+
+                        <!-- API Key -->
+                        <div>
+                            <label for="api_key" class="block text-sm font-medium text-gray-700">API Key (optional)</label>
+                            <input type="text" id="api_key" name="api_key" placeholder="Enter your API key in quotes"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Metadata Selection -->
+                    <div class="flex items-center">
+                        <input type="checkbox" id="include_metadata" name="include_metadata"
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                        <label for="include_metadata" class="ml-2 block text-sm text-gray-700">
+                            Include metadata as variables
+                        </label>
+                    </div>
+
+                    <!-- Variable Selection (hidden by default) -->
+                    <div id="variable_selection" class="hidden">
+                        <label for="selected_variables" class="block text-sm font-medium text-gray-700">
+                            Enter selected variables (comma-separated)
+                        </label>
+                        <input type="text" id="selected_variables" name="selected_variables"
+                               placeholder="e.g., variable1, variable2, variable3"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="flex justify-end">
+                        <button type="submit"
+                                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Generate Data
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Confirmation Dialog -->
+                <div id="confirmation" class="hidden mt-6 p-4 bg-gray-50 rounded-md">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Is this correct?</h2>
+                    <p id="api_url_display" class="text-sm text-gray-600 mb-4 break-all"></p>
+                    <div class="flex space-x-4">
+                        <button id="confirm_yes"
+                                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            Yes, Continue
+                        </button>
+                        <button id="confirm_no"
+                                class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            No, Make Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Populate years dropdown
+        const yearSelect = document.getElementById('year_select');
+        const currentYear = new Date().getFullYear();
+        for (let year = currentYear; year >= 2009; year--) {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+
+        // Show/hide variable selection based on data option
+        document.getElementById('data_option').addEventListener('change', function(e) {
+            const variableSelection = document.getElementById('variable_selection');
+            variableSelection.style.display = e.target.value === 'select_variables' ? 'block' : 'none';
+        });
+
+        // Form submission handling
+        document.getElementById('data_selection_form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            try {
+                // Generate API URL
+                const formData = new FormData(e.target);
+                const response = await fetch('/api/generate_url', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData))
+                });
+                
+                const data = await response.json();
+                
+                // Show confirmation dialog
+                document.getElementById('api_url_display').textContent = data.api_url;
+                document.getElementById('confirmation').style.display = 'block';
+                
+                // Scroll to confirmation
+                document.getElementById('confirmation').scrollIntoView({ behavior: 'smooth' });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            }
+        });
+
+        // Confirmation handlers
+        document.getElementById('confirm_yes').addEventListener('click', async () => {
+            const formData = new FormData(document.getElementById('data_selection_form'));
+            const response = await fetch('/api/submit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(Object.fromEntries(formData))
+            });
+            
+            const result = await response.json();
+            if (result.message) {
+                alert(result.message);
+                window.location.reload();
+            } else {
+                alert(result.error || 'An error occurred');
+            }
+        });
+
+        document.getElementById('confirm_no').addEventListener('click', () => {
+            document.getElementById('confirmation').style.display = 'none';
+        });
+    </script>
 </body>
 </html>
