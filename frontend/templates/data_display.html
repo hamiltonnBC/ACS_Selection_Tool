@@ -4,91 +4,194 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Census Data Results</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/1.7.0/css/buttons.dataTables.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
-    <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
+    <style>
+        .data-table {
+            width: 100% !important;
+            margin-top: 1rem !important;
+        }
+        .data-table thead th {
+            background-color: #f3f4f6 !important;
+            padding: 0.75rem !important;
+            font-weight: 600 !important;
+        }
+        .data-table tbody td {
+            padding: 0.75rem !important;
+        }
+        .data-table tbody tr:hover {
+            background-color: #f9fafb !important;
+        }
+        .hidden-csv-button {
+            display: none !important;
+        }
+        .btn-primary {
+            @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 
+                   transition-colors duration-200 flex items-center justify-center gap-2;
+        }
+        .btn-secondary {
+            @apply px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 
+                   transition-colors duration-200 flex items-center justify-center gap-2;
+        }
+        select, input {
+            @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                   focus:border-blue-500 focus:ring-blue-500;
+        }
+    </style>
 </head>
-<body>
-    <header>
-        <div class="container">
-            <h1><i class="fas fa-table"></i> Census Data Results</h1>
-        </div>
-    </header>
-
-    <main class="container">
-        <div class="row">
-            <div class="col-md-3" id="left-panel">
-                <div class="info-box">
-                    <h3><i class="fas fa-info-circle"></i> Data Info</h3>
-                    <p>Table: {{ table_name }}</p>
-                    <p>Geography: {{ geography }}</p>
-                </div>
-                <div class="action-box">
-                    <h3><i class="fas fa-cogs"></i> Actions</h3>
-                    <button id="exportCsv" class="btn"><i class="fas fa-file-csv"></i> Export CSV</button>
-                    
-                    <h4>Add More Variables</h4>
-                    <input type="text" id="moreVariables" placeholder="Enter variable codes">
-                    
-                    <h4>Add More Years</h4>
-                    <select id="moreYears" multiple>
-                        {% for year in available_years %}
-                            <option value="{{ year }}">{{ year }}</option>
-                        {% endfor %}
-                    </select>
-                    
-                    <button id="updateData" class="btn"><i class="fas fa-sync"></i> Update Data</button>
-                    
-                    <button id="newQuery" class="btn"><i class="fas fa-search"></i> New Query</button>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex">
+                    <div class="flex-shrink-0 flex items-center">
+                        <a href="/" class="text-xl font-bold text-blue-600">ACS Data Explorer</a>
+                    </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="/" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Home</a>
+                        <a href="/projects" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Projects</a>
+                        <a href="/saved_searches" class="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md">Saved Searches</a>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-9" id="right-panel">
-                <div class="year-selector">
-                    <label for="yearSelect">Select Year:</label>
-                    <select id="yearSelect">
-                        {% for year in years %}
-                            <option value="{{ year }}">{{ year }}</option>
-                        {% endfor %}
-                    </select>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <!-- Flex container for sidebar and main content -->
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Sidebar -->
+            <div class="w-full md:w-64 space-y-6">
+                <!-- Info Box -->
+                <div class="bg-white shadow rounded-lg p-4">
+                    <h3 class="text-lg font-medium text-gray-900 flex items-center gap-2 mb-4">
+                        <i class="fas fa-info-circle text-blue-600"></i> Data Info
+                    </h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-500">Table:</span>
+                            <span class="text-sm font-medium">{{ table_name }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-500">Geography:</span>
+                            <span class="text-sm font-medium">{{ geography }}</span>
+                        </div>
+                    </div>
                 </div>
-                <div id="data-table-container">
-                    {{ table_html|safe }}
+
+                <!-- Actions Box -->
+                <div class="bg-white shadow rounded-lg p-4">
+                    <h3 class="text-lg font-medium text-gray-900 flex items-center gap-2 mb-4">
+                        <i class="fas fa-cogs text-blue-600"></i> Actions
+                    </h3>
+                    <div class="space-y-4">
+                        <button id="exportCsv" class="btn-primary w-full">
+                            <i class="fas fa-file-csv"></i>
+                            Export CSV
+                        </button>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Add Variables</label>
+                            <input type="text" id="moreVariables" 
+                                   class="w-full rounded-md border-gray-300"
+                                   placeholder="Enter comma-separated codes">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Add Years</label>
+                            <select id="moreYears" multiple class="w-full rounded-md border-gray-300 h-32">
+                                {% for year in available_years %}
+                                    <option value="{{ year }}">{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button id="updateData" class="btn-primary w-full">
+                            <i class="fas fa-sync"></i>
+                            Update Data
+                        </button>
+
+                        <button id="newQuery" class="btn-secondary w-full">
+                            <i class="fas fa-search"></i>
+                            New Query
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="flex-1">
+                <div class="bg-white shadow rounded-lg p-4">
+                    <!-- Year Selector -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2">
+                            <label for="yearSelect" class="text-sm font-medium text-gray-700">Select Year:</label>
+                            <select id="yearSelect" class="rounded-md border-gray-300 w-32">
+                                {% for year in years %}
+                                    <option value="{{ year }}">{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Data Table -->
+                    <div class="overflow-x-auto">
+                        {{ table_html|safe }}
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 Census Data App. All rights reserved.</p>
+    <footer class="bg-white shadow mt-8">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-sm text-gray-500">
+                &copy; 2024 ACS Data Explorer. All rights reserved.
+            </p>
         </div>
     </footer>
 
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
+
     <script>
         $(document).ready(function() {
+            // Initialize DataTable with modern styling
             var dataTable = $('.data-table').DataTable({
                 pageLength: 25,
                 scrollX: true,
                 fixedHeader: true,
                 dom: 'Bfrtip',
-                buttons: [
-                    {
-                        extend: 'csv',
-                        text: 'Hidden CSV Button',
-                        className: 'hidden-csv-button',
-                        filename: function() {
-                            return 'census_data_' + $('#yearSelect').val() + '_' + new Date().toISOString().slice(0,10);
-                        }
+                buttons: [{
+                    extend: 'csv',
+                    text: 'Hidden CSV Button',
+                    className: 'hidden-csv-button',
+                    filename: function() {
+                        return 'census_data_' + $('#yearSelect').val() + '_' + new Date().toISOString().slice(0,10);
                     }
-                ]
+                }],
+                language: {
+                    search: "🔍",
+                    searchPlaceholder: "Search data...",
+                    paginate: {
+                        previous: "←",
+                        next: "→"
+                    }
+                },
+                initComplete: function() {
+                    // Style the search input
+                    $('.dataTables_filter input').addClass('rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500');
+                }
             });
 
+            // Event Handlers
             $('#exportCsv').on('click', function() {
                 $('.hidden-csv-button').click();
             });
@@ -100,6 +203,9 @@
             $('#updateData').on('click', function() {
                 var moreVariables = $('#moreVariables').val();
                 var moreYears = $('#moreYears').val();
+                
+                // Show loading state
+                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Updating...');
                 
                 $.ajax({
                     url: '/update_data',
@@ -113,14 +219,15 @@
                     },
                     error: function(error) {
                         console.error('Error updating data:', error);
+                        alert('Error updating data. Please try again.');
+                        $('#updateData').prop('disabled', false)
+                            .html('<i class="fas fa-sync"></i> Update Data');
                     }
                 });
             });
 
             $('#yearSelect').on('change', function() {
-                // Here you would typically update the table data based on the selected year
-                // For now, we'll just reload the page with the new year
-                window.location.href = '/results?year=' + $(this).val();
+                window.location.href = '/process_data?year=' + $(this).val();
             });
         });
     </script>
