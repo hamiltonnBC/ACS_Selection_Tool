@@ -2,7 +2,7 @@
 Admin routes and handlers.
 """
 from flask import Blueprint, render_template
-from app.auth.decorators import login_required
+from backend.app.auth.decorators import login_required
 
 admin_bp = Blueprint('admin', __name__)
 
