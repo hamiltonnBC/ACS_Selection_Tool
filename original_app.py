@@ -1,7 +1,7 @@
 """
 American Community Survey (ACS) Data Processing Application
 
-This Flask application provides an interface for accessing and processing ACS data 
+This Flask application provides an interface for accessing and processing ACS data
 from the Census Bureau API. It allows users to select variables, years, and geographic
 levels for data retrieval and visualization.
 
@@ -38,8 +38,8 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 #db = None
 
 # Initialize Flask application
-app = Flask(__name__, 
-            static_folder="../frontend/static", 
+app = Flask(__name__,
+            static_folder="../frontend/static",
             template_folder="../frontend/templates")
 
 # Configure app
@@ -56,18 +56,18 @@ db = DatabaseManager('postgresql://acs_user:Nick_ACS_DB_Password@localhost:5432/
 #     app = Flask(__name__,
 #                 static_folder="../frontend/static",
 #                 template_folder="../frontend/templates")
-    
+
 #     # Configure app
 #     app.config['SECRET_KEY'] = SECRET_KEY
 #     app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Optional: sets how long sessions last
-    
+
 #     # Initialize database
 #     global db
 #     app.db = DatabaseManager(DATABASE_URL)
-    
+
 #     # Configure logging
 #     logging.basicConfig(level=logging.INFO)
-    
+
 #     return app
 
 def login_required(f):
@@ -82,35 +82,35 @@ def login_required(f):
 def get_acs_selection(year, acs_type):
     """
     Determine the ACS selection type based on year and ACS type.
-    
+
     Args:
         year (str): The year for data selection
         acs_type (str): Type of ACS survey (1-year or 5-year)
-    
+
     Returns:
         str: ACS selection type
     """
     return acs_type
-    
+
 
 def get_variable_names(year, api_key, variables_needed, acs_selection, tableType):
     """
     Fetch variable names and metadata from the Census API.
-    
+
     Args:
         year (str): Year of data
         api_key (str): Census API key
         variables_needed (list): List of variable codes
         acs_selection (str): ACS selection type
         tableType (str): Type of table ('/profile' or '')
-    
+
     Returns:
         dict: Dictionary mapping variable codes to their descriptions
     """
     api_url = f'https://api.census.gov/data/{year}/acs/{acs_selection}{tableType}/variables.json'
     response = requests.get(api_url)
     variables = {}
-    
+
     if response.status_code == 200:
         data = response.json()
         for var_id, var_info in data['variables'].items():
@@ -200,17 +200,17 @@ def register():
         try:
             data = request.json
             print("Received registration data:", data)  # Debug print
-            
+
             if not all([data.get('username'), data.get('email'), data.get('password')]):
                 return jsonify({'success': False, 'error': 'Missing required fields'})
-            
+
             user_id = db.create_user(
                 username=data['username'],
                 email=data['email'],
                 password=data['password']
             )
             print("Returned user_id:", user_id)  # Debug print
-            
+
             if user_id:
                 return jsonify({'success': True, 'user_id': user_id})
             return jsonify({'success': False, 'error': 'Registration failed'})
@@ -247,9 +247,9 @@ def index():
     """Render the main application page."""
     return render_template('index.html')
 
- 
+
 @app.route('/api/submit', methods=['POST'])
-@login_required  
+@login_required
 def submit_data():
     """Handle data submission requests."""
     try:
@@ -266,7 +266,7 @@ def submit_data():
             geography=data['geography'],
             variables=data['selected_variables'].split(',') if data.get('selected_variables') else []
         )
-        
+
         # Process the data
         result = fetch_and_save_data(
             year=data['year_select'],
@@ -277,10 +277,10 @@ def submit_data():
             geography=data['geography'],
             api_key=data['api_key'].strip('"') if data.get('api_key') else None
         )
-        
+
         if 'error' in result:
             return jsonify(result), 400
-            
+
         result['search_id'] = search_id
         return jsonify(result)
 
@@ -298,12 +298,12 @@ def process_data():
             search_id = request.args.get('search_id')
             if not search_id:
                 return redirect(url_for('index'))
-            
+
             # Get search data from database
             search = db.get_search(search_id)
             if not search:
                 return redirect(url_for('index'))
-            
+
             # Reconstruct API URL
             if search['table_name'].startswith('DP'):
                 api_url = f'https://api.census.gov/data/{search["year"]}/acs/{search["acs_type"]}/profile?get=NAME,{",".join(search["variables"])}&for={search["geography"]}'
@@ -318,10 +318,10 @@ def process_data():
             # Get variable names and process data
             tableType = '/profile' if search['table_name'].startswith('DP') else ''
             variable_names = get_variable_names(
-                search['year'], 
+                search['year'],
                 None,  # API key not needed for viewing
-                search['variables'], 
-                search['acs_type'], 
+                search['variables'],
+                search['acs_type'],
                 tableType
             )
 
@@ -333,23 +333,23 @@ def process_data():
 
             # Generate HTML table
             table_html = df.to_html(index=False, classes='display data-table')
-            
+
             available_years = range(2009, 2023)
             years = [search['year']]
 
-            return render_template('data_display.html', 
-                                table_html=table_html, 
-                                table_name=search['table_name'], 
-                                year=search['year'], 
-                                geography=search['geography'],
-                                available_years=available_years,
-                                years=years,
-                                current_year=search['year'],
-                                search=search)
+            return render_template('data_display.html',
+                                   table_html=table_html,
+                                   table_name=search['table_name'],
+                                   year=search['year'],
+                                   geography=search['geography'],
+                                   available_years=available_years,
+                                   years=years,
+                                   current_year=search['year'],
+                                   search=search)
         else:
             # Handle POST request
             data = request.json
-            
+
             # Extract request parameters
             api_url = data['api_url']
             year = data['year_select']
@@ -366,9 +366,9 @@ def process_data():
 
             # Get variable names and process data
             tableType = '/profile' if table.startswith('DP') else ''
-            variables_needed = ([col for col in census_data[0] if col != 'NAME' and not col.startswith('GEO_ID')] 
-                              if data_option == 'entire_table' 
-                              else data['selected_variables'].split(',') if data['selected_variables'] else [])
+            variables_needed = ([col for col in census_data[0] if col != 'NAME' and not col.startswith('GEO_ID')]
+                                if data_option == 'entire_table'
+                                else data['selected_variables'].split(',') if data['selected_variables'] else [])
 
             variable_names = get_variable_names(year, api_key, variables_needed, acs_type, tableType)
 
@@ -380,29 +380,29 @@ def process_data():
 
             # Generate HTML table
             table_html = df.to_html(index=False, classes='display data-table')
-            
+
             available_years = range(2009, 2023)
             years = [year]
 
-            return render_template('data_display.html', 
-                                table_html=table_html, 
-                                table_name=table, 
-                                year=year, 
-                                geography=geography,
-                                available_years=available_years,
-                                years=years,
-                                current_year=year)
+            return render_template('data_display.html',
+                                   table_html=table_html,
+                                   table_name=table,
+                                   year=year,
+                                   geography=geography,
+                                   available_years=available_years,
+                                   years=years,
+                                   current_year=year)
 
     except Exception as e:
         app.logger.error(f"An error occurred: {str(e)}")
-        return render_template('data_display.html', 
-                             error=f"Error processing data: {str(e)}",
-                             table_name="Error",
-                             year="",
-                             geography="",
-                             available_years=[],
-                             years=[],
-                             current_year="")
+        return render_template('data_display.html',
+                               error=f"Error processing data: {str(e)}",
+                               table_name="Error",
+                               year="",
+                               geography="",
+                               available_years=[],
+                               years=[],
+                               current_year="")
 
 @app.route('/update_data', methods=['POST'])
 def update_data():
@@ -415,7 +415,7 @@ def update_data():
 def generate_url():
     """
     Generate Census API URL based on user parameters.
-    
+
     Constructs appropriate URL for different table types and data options.
     """
     data = request.json
@@ -432,13 +432,13 @@ def generate_url():
 
     # Generate appropriate URL based on table type and data option
     if table.startswith('DP'):
-        api_url = (f'{base_url}/profile?get=group({table})&for={geography}' 
-                  if data_option == 'entire_table' 
-                  else f'{base_url}/profile?get=NAME,{selected_variables}&for={geography}')
+        api_url = (f'{base_url}/profile?get=group({table})&for={geography}'
+                   if data_option == 'entire_table'
+                   else f'{base_url}/profile?get=NAME,{selected_variables}&for={geography}')
     else:
-        api_url = (f'{base_url}?get=group({table})&for={geography}' 
-                  if data_option == 'entire_table' 
-                  else f'{base_url}?get=NAME,{selected_variables}&for={geography}')
+        api_url = (f'{base_url}?get=group({table})&for={geography}'
+                   if data_option == 'entire_table'
+                   else f'{base_url}?get=NAME,{selected_variables}&for={geography}')
 
     if api_key:
         api_url += f'&key={api_key}'
@@ -469,7 +469,7 @@ def saved_searches():
         searches = db.get_project_searches(project_id)
     else:
         searches = db.get_user_searches(session['user_id'])
-    
+
     # Get projects for filter dropdown
     projects = db.get_user_projects(session['user_id'])
     return render_template('saved_searches.html', searches=searches, projects=projects)
@@ -513,10 +513,10 @@ def debug_url():
             geography=data['geography'],
             api_key=data.get('api_key')
         )
-        
+
         # Try to fetch data
         response = requests.get(api_url)
-        
+
         return jsonify({
             'api_url': api_url,
             'status_code': response.status_code,
@@ -525,7 +525,7 @@ def debug_url():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
+
 @app.route('/projects')
 @login_required
 def projects():
@@ -559,7 +559,7 @@ def delete_project(project_id):
 def main():
     """
     Main entry point for the application.
-    
+
     Initializes the Flask application and starts the server.
     """
     #app = create_app()
